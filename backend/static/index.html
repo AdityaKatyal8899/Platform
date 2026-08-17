@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoWatch Video Pipeline Dashboard</title>
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- HLS.js library for cross-browser HLS support -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <i class="fa-solid fa-play-circle logo-icon"></i>
+                <div class="brand-info">
+                    <h1>CoWatch SDK</h1>
+                    <span class="sub-title">Adaptive HLS Transcoding Pipeline</span>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <span class="pulse-dot"></span>
+                <span class="indicator-text">API Online</span>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <main class="dashboard-grid">
+            
+            <!-- Left Side: Controls & Uploader -->
+            <section class="control-panel">
+                <!-- Local Test Card -->
+                <div class="card glass-card test-card">
+                    <div class="card-header">
+                        <i class="fa-solid fa-bolt icon-accent"></i>
+                        <h2>Quick Start Test</h2>
+                    </div>
+                    <p class="card-description">Trigger immediate transcoding on the <code>test.mp4</code> located in the server root.</p>
+                    <button id="btn-process-local" class="btn btn-primary">
+                        <i class="fa-solid fa-gears btn-icon"></i>
+                        <span>Process local test.mp4</span>
+                    </button>
+                </div>
+
+                <!-- Uploader Card -->
+                <div class="card glass-card upload-card">
+                    <div class="card-header">
+                        <i class="fa-solid fa-cloud-arrow-up icon-accent"></i>
+                        <h2>Upload Custom Video</h2>
+                    </div>
+                    <div id="drop-zone" class="drop-zone">
+                        <div class="drop-zone-content">
+                            <i class="fa-solid fa-file-video upload-icon"></i>
+                            <p class="drop-text-primary">Drag & Drop video file here</p>
+                            <p class="drop-text-secondary">or click to select from files</p>
+                            <span class="file-limits">Supports MP4, MOV, AVI, MKV</span>
+                        </div>
+                        <input type="file" id="file-input" accept="video/*" hidden>
+                    </div>
+                    <div id="upload-progress-container" class="upload-progress-container hidden">
+                        <div class="progress-bar-wrapper">
+                            <div id="upload-progress-bar" class="progress-bar"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span id="upload-percent">Uploading: 0%</span>
+                            <span id="upload-size">0 MB</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Side: Transcoding Monitor -->
+            <section class="monitor-panel">
+                <div class="card glass-card monitor-card">
+                    <div class="card-header">
+                        <i class="fa-solid fa-tv icon-accent"></i>
+                        <h2>Live Pipeline Monitor</h2>
+                    </div>
+                    <div id="monitor-empty" class="monitor-empty">
+                        <i class="fa-solid fa-arrow-left-long monitor-empty-icon"></i>
+                        <p>No active transcoding jobs. Initiate processing to watch real-time webhook updates.</p>
+                    </div>
+                    <div id="monitor-active" class="monitor-active hidden">
+                        <div class="monitor-header-row">
+                            <div class="monitor-info">
+                                <span class="label">Video ID</span>
+                                <span id="monitor-video-id" class="value truncate">--</span>
+                            </div>
+                            <div id="monitor-badge" class="badge">idle</div>
+                        </div>
+                        
+                        <div class="pipeline-flow">
+                            <!-- Ingest -->
+                            <div class="flow-node active" id="node-queued">
+                                <div class="node-circle"><i class="fa-solid fa-list-check"></i></div>
+                                <span>Queued</span>
+                            </div>
+                            <!-- Transcode -->
+                            <div class="flow-line" id="line-1"></div>
+                            <div class="flow-node" id="node-processing">
+                                <div class="node-circle"><i class="fa-solid fa-arrows-spin spinner"></i></div>
+                                <span>Transcoding</span>
+                            </div>
+                            <!-- Upload -->
+                            <div class="flow-line" id="line-2"></div>
+                            <div class="flow-node" id="node-uploading">
+                                <div class="node-circle"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                                <span>Uploading</span>
+                            </div>
+                            <!-- Ready -->
+                            <div class="flow-line" id="line-3"></div>
+                            <div class="flow-node" id="node-ready">
+                                <div class="node-circle"><i class="fa-solid fa-circle-check"></i></div>
+                                <span>Ready</span>
+                            </div>
+                        </div>
+
+                        <!-- Progress indicator -->
+                        <div class="monitor-meta-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Duration:</span>
+                                <span id="monitor-duration" class="stat-val">--</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Renditions:</span>
+                                <span id="monitor-renditions-count" class="stat-val">--</span>
+                            </div>
+                        </div>
+                        <div id="monitor-error-box" class="monitor-error-box hidden">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <p id="monitor-error-msg"></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Library Section -->
+        <section class="library-panel">
+            <div class="card glass-card library-card">
+                <div class="card-header">
+                    <i class="fa-solid fa-photo-film icon-accent"></i>
+                    <h2>Processed Videos</h2>
+                </div>
+                <div class="library-table-container">
+                    <table class="library-table">
+                        <thead>
+                            <tr>
+                                <th>Thumbnail</th>
+                                <th>Video ID</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="library-tbody">
+                            <!-- Populated dynamically -->
+                            <tr class="empty-row">
+                                <td colspan="6" class="text-center">No videos processed yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Video Player Modal Overlay -->
+    <div id="player-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-card">
+            <button id="btn-close-modal" class="modal-close-btn">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="modal-header">
+                <h2>HLS Player Stream</h2>
+                <span id="player-video-id" class="sub-title text-muted"></span>
+            </div>
+            
+            <div class="player-wrapper">
+                <video id="hls-video" controls autoplay></video>
+            </div>
+            
+            <div class="player-controls-panel">
+                <div class="rendition-selector-wrapper">
+                    <label for="quality-select"><i class="fa-solid fa-sliders"></i> Quality Renditions:</label>
+                    <select id="quality-select" class="form-select">
+                        <option value="auto">Adaptive Bitrate (Auto)</option>
+                    </select>
+                </div>
+                <div class="manifest-url-bar">
+                    <span class="manifest-label">Master Playlist URL:</span>
+                    <input type="text" id="manifest-url-input" class="manifest-input" readonly>
+                    <button id="btn-copy-manifest" class="btn btn-secondary">
+                        <i class="fa-solid fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Frontend Script -->
+    <script src="/static/app.js"></script>
+</body>
+</html>

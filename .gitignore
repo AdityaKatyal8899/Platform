@@ -1,0 +1,28 @@
+# Python build/cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDE / System files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local storage and database (contains transcoded video segments and temporary logs)
+backend/storage/
+backend/leads.csv
+
+# Local configurations (contains cloud API credentials)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
