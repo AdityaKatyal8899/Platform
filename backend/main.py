@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from cowatch_sdk import SDKConfig, process_video_to_hls
+# from cowatch_sdk import SDKConfig, process_video_to_hls
 import database as db
 
 # Configure logging
@@ -49,48 +49,30 @@ PORT = int(os.getenv("PORT", "8000"))
 BASE_URL = os.getenv("BASE_URL", f"http://localhost:{PORT}")
 
 def transcode_worker(video_id: str, input_path: str):
-    """Orchestrates the SDK's transcode pipeline in a background thread."""
+    """Simulates the transcoding process for testing without cowatch_sdk dependencies."""
+    import time
     logger.info(f"Starting transcode task for video_id: {video_id}")
     
-    # Configure the SDK based on environment variables (defaulting to local)
-    storage_backend = os.getenv("STORAGE_BACKEND", "local").lower()
+    # 1. Queued -> Transcoding
+    time.sleep(2)
+    db.update_video_status(DB_PATH, video_id, "transcoding", "Processing video stream & resolution layers...")
     
-    if storage_backend == "s3":
-        cfg = SDKConfig(
-            storage_backend="s3",
-            s3_bucket=os.getenv("S3_BUCKET"),
-            s3_region=os.getenv("S3_REGION", "us-east-1"),
-            s3_access_key=os.getenv("S3_ACCESS_KEY"),
-            s3_secret=os.getenv("S3_SECRET"),
-            s3_endpoint_url=os.getenv("S3_ENDPOINT_URL"),
-            cdn_url=os.getenv("CDN_URL", BASE_URL),
-            delivery_url_template=os.getenv("DELIVERY_URL_TEMPLATE", "{cdn}/videos/{video_id}/master.m3u8"),
-            result_backend="webhook",
-            result_webhook_url=f"{BASE_URL}/api/videos/webhook",
-            temp_dir=str(TEMP_DIR / video_id),
-            ffmpeg_preset=os.getenv("FFMPEG_PRESET", "medium"),
-            ffmpeg_tune=os.getenv("FFMPEG_TUNE")
-        )
-    else:
-        cfg = SDKConfig(
-            storage_backend="local",
-            local_storage_dir=str(STORAGE_DIR),
-            cdn_url=BASE_URL,
-            delivery_url_template="{cdn}/videos/{video_id}/master.m3u8",
-            result_backend="webhook",
-            result_webhook_url=f"{BASE_URL}/api/videos/webhook",
-            temp_dir=str(TEMP_DIR / video_id),
-            ffmpeg_preset=os.getenv("FFMPEG_PRESET", "medium"),
-            ffmpeg_tune=os.getenv("FFMPEG_TUNE")
-        )
+    # 2. Transcoding -> Uploading (with mock metadata updates)
+    time.sleep(3)
+    db.update_video_metadata(DB_PATH, video_id, 120.0, "/placeholder-thumbnail.jpg")
+    db.update_video_status(DB_PATH, video_id, "uploading", "Uploading HLS segments to delivery store...")
     
-    try:
-        process_video_to_hls(video_id, input_path, cfg)
-        logger.info(f"SDK transcoding completed successfully for {video_id}")
-    except Exception as e:
-        logger.error(f"SDK transcoding failed for {video_id}: {e}")
-        # Mark as failed in DB if the pipeline errored
-        db.update_video_status(DB_PATH, video_id, "failed", str(e))
+    # 3. Uploading -> Completed (mock delivery URLs)
+    time.sleep(3)
+    delivery_url = f"{BASE_URL}/static/trimmed_clip.mp4" 
+    db.update_video_delivery(DB_PATH, video_id, delivery_url)
+    db.update_video_renditions(DB_PATH, video_id, [
+        {"resolution": "1080p", "width": 1920, "height": 1080, "bitrate": 4500000},
+        {"resolution": "720p", "width": 1280, "height": 720, "bitrate": 2200000},
+        {"resolution": "360p", "width": 640, "height": 360, "bitrate": 800000}
+    ])
+    db.update_video_status(DB_PATH, video_id, "completed")
+    logger.info(f"Mock transcoding completed successfully for {video_id}")
 
 @app.post("/api/videos/process-local")
 def process_local_video(background_tasks: BackgroundTasks):
