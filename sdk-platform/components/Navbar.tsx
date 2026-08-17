@@ -37,7 +37,7 @@ export default function Navbar() {
   })
 
   return (
-    <div className={`nav-wrapper ${scrolled || pathname !== '/' ? 'scrolled' : 'hidden-nav'}`}>
+    <div className={`nav-wrapper ${menuOpen || scrolled || pathname !== '/' ? 'scrolled' : 'hidden-nav'}`}>
       <nav className="nav container">
         <Link href="/" className="brand">
           <span className="brand-mark"><Video size={17} /></span>

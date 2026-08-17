@@ -43,22 +43,28 @@ export default function PipelineDiagram() {
           const Icon = node.icon
           return (
             <div className="pipeline-node-wrap" key={node.label}>
-              <div className={`pipeline-node ${i === 1 ? 'active' : ''}`}>
+              <div 
+                className={`pipeline-node ${i === 1 ? 'active' : ''}`}
+                style={i === 4 ? { gridColumn: 'span 2' } : undefined}
+              >
                 <Icon size={26} />
                 <strong>{node.label}</strong>
                 <small>{node.sub}</small>
               </div>
               {i < nodes.length - 1 && (
-                <div style={{ 
-                  position: 'relative', 
-                  width: '40px', 
-                  height: '3px', 
-                  background: '#e2e8e2', 
-                  margin: '0 8px', 
-                  overflow: 'hidden',
-                  borderRadius: '999px',
-                  flexShrink: 0
-                }}>
+                <div 
+                  className="pipeline-connector"
+                  style={{ 
+                    position: 'relative', 
+                    width: '40px', 
+                    height: '3px', 
+                    background: '#e2e8e2', 
+                    margin: '0 8px', 
+                    overflow: 'hidden',
+                    borderRadius: '999px',
+                    flexShrink: 0
+                  }}
+                >
                   <div style={{
                     position: 'absolute',
                     top: 0,
