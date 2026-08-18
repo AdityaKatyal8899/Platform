@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Video, ArrowRight, Menu, X } from 'lucide-react'
 import { Button } from './ui/button'
+import { AnimatedThemeToggler } from './AnimatedThemeToggler'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
@@ -29,6 +30,25 @@ export default function Navbar() {
     setMenuOpen(false)
   }, [pathname])
 
+  // Listen for 'T' keypress to trigger theme toggler
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA' ||
+        document.activeElement?.getAttribute('contenteditable') === 'true'
+      ) {
+        return
+      }
+      if (e.key.toLowerCase() === 't') {
+        const btn = document.querySelector('[data-theme-toggler]') as HTMLButtonElement
+        btn?.click()
+      }
+    }
+    document.addEventListener('keydown', handleKeyPress)
+    return () => document.removeEventListener('keydown', handleKeyPress)
+  }, [])
+
   const isActive = (path: string) => pathname === path
 
   const linkStyle = (path: string): React.CSSProperties => ({
@@ -52,7 +72,8 @@ export default function Navbar() {
           <Link href="/contact" style={linkStyle('/contact')}>Contact</Link>
         </div>
 
-        <div className="nav-actions">
+        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <AnimatedThemeToggler variant="square" data-theme-toggler style={{ scale: '0.85' }} />
           <Button 
             className="nav-cta" 
             onClick={() => { 

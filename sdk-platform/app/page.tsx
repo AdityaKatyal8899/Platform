@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import ScrollReveal from '@/components/ScrollReveal'
 import PipelineDiagram from '@/components/PipelineDiagram'
 import SectionIntro from '@/components/SectionIntro'
+import HeroVideo from '@/components/HeroVideo'
 
 export default function HomePage() {
   const router = useRouter()
@@ -45,9 +46,9 @@ export default function HomePage() {
         </ScrollReveal>
       </section>
       
-      {/* Pipeline Diagram overview (appearing right after scroll fold) */}
-      <ScrollReveal className="container py-10">
-        <PipelineDiagram />
+      {/* Platform Walkthrough Video Demo (appearing right after scroll fold) */}
+      <ScrollReveal className="container py-10" style={{ marginBottom: '40px' }}>
+        <HeroVideo />
       </ScrollReveal>
       
       {/* Platform Stats panel */}
@@ -64,6 +65,7 @@ export default function HomePage() {
           <span className="status-dot green" /> Your Infrastructure, Your Cloud
         </div>
       </ScrollReveal>
+
 
       {/* What We Do & Benefits showcase grid (Replacing the old blurred bottom cards) */}
       <ScrollReveal className="section container" style={{ borderTop: '1px solid var(--border)', paddingTop: '60px', paddingBottom: '100px' }}>
