@@ -64,7 +64,7 @@ def transcode_worker(video_id: str, input_path: str, base_url: str):
     
     # 3. Uploading -> Completed (mock delivery URLs)
     time.sleep(3)
-    delivery_url = f"{base_url}/static/trimmed_clip.mp4" 
+    delivery_url = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" 
     db.update_video_delivery(DB_PATH, video_id, delivery_url)
     db.update_video_renditions(DB_PATH, video_id, [
         {"resolution": "1080p", "width": 1920, "height": 1080, "bitrate": 4500000},
