@@ -40,7 +40,7 @@ export default function DemoPage() {
         const id = setTimeout(() => controller.abort(), 3500)
         
         // Ping local or public backend address
-        const res = await fetch('http://localhost:8000/api/videos', { signal: controller.signal })
+        const res = await fetch('https://cowatchtranscoder.onrender.com/api/videos', { signal: controller.signal })
         clearTimeout(id)
         
         if (res.ok && active) {
