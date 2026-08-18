@@ -48,10 +48,10 @@ def serve_ui():
 PORT = int(os.getenv("PORT", "8000"))
 BASE_URL = os.getenv("BASE_URL", f"http://localhost:{PORT}")
 
-def transcode_worker(video_id: str, input_path: str):
+def transcode_worker(video_id: str, input_path: str, base_url: str):
     """Simulates the transcoding process for testing without cowatch_sdk dependencies."""
     import time
-    logger.info(f"Starting transcode task for video_id: {video_id}")
+    logger.info(f"Starting transcode task for video_id: {video_id} with base_url: {base_url}")
     
     # 1. Queued -> Transcoding
     time.sleep(2)
@@ -64,7 +64,7 @@ def transcode_worker(video_id: str, input_path: str):
     
     # 3. Uploading -> Completed (mock delivery URLs)
     time.sleep(3)
-    delivery_url = f"{BASE_URL}/static/trimmed_clip.mp4" 
+    delivery_url = f"{base_url}/static/trimmed_clip.mp4" 
     db.update_video_delivery(DB_PATH, video_id, delivery_url)
     db.update_video_renditions(DB_PATH, video_id, [
         {"resolution": "1080p", "width": 1920, "height": 1080, "bitrate": 4500000},
@@ -75,7 +75,7 @@ def transcode_worker(video_id: str, input_path: str):
     logger.info(f"Mock transcoding completed successfully for {video_id}")
 
 @app.post("/api/videos/process-local")
-def process_local_video(background_tasks: BackgroundTasks):
+def process_local_video(background_tasks: BackgroundTasks, request: Request):
     """Processes the test.mp4 file pre-placed in the workspace root."""
     workspace_root = BACKEND_DIR.parent
     local_test_file = workspace_root / "test.mp4"
@@ -102,8 +102,11 @@ def process_local_video(background_tasks: BackgroundTasks):
     # Initialize the database record
     db.create_video(DB_PATH, video_id, "queued")
     
+    # Dynamically resolve server base url from incoming request
+    base_url = str(request.base_url).rstrip("/")
+    
     # Add transcode task to the background runner
-    background_tasks.add_task(transcode_worker, video_id, str(input_path))
+    background_tasks.add_task(transcode_worker, video_id, str(input_path), base_url)
     
     return {
         "video_id": video_id,
@@ -112,7 +115,7 @@ def process_local_video(background_tasks: BackgroundTasks):
     }
 
 @app.post("/api/videos/upload")
-async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+async def upload_video(background_tasks: BackgroundTasks, request: Request, file: UploadFile = File(...)):
     """Accepts a video upload and spawns the transcoding process."""
     if not file.filename.lower().endswith((".mp4", ".mov", ".avi", ".mkv")):
         raise HTTPException(status_code=400, detail="Unsupported video format")
@@ -132,8 +135,11 @@ async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = Fil
     # Initialize the database record with "queued"
     db.create_video(DB_PATH, video_id, "queued")
     
+    # Dynamically resolve server base url from incoming request
+    base_url = str(request.base_url).rstrip("/")
+    
     # Add transcode task to the background runner
-    background_tasks.add_task(transcode_worker, video_id, str(input_path))
+    background_tasks.add_task(transcode_worker, video_id, str(input_path), base_url)
     
     return {
         "video_id": video_id,
