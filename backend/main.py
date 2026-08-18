@@ -8,7 +8,6 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-# from cowatch_sdk import SDKConfig, process_video_to_hls
 import database as db
 
 # Configure logging
@@ -49,9 +48,9 @@ PORT = int(os.getenv("PORT", "8000"))
 BASE_URL = os.getenv("BASE_URL", f"http://localhost:{PORT}")
 
 def transcode_worker(video_id: str, input_path: str, base_url: str):
-    """Simulates the transcoding process for testing without cowatch_sdk dependencies."""
-    import time
     logger.info(f"Starting transcode task for video_id: {video_id} with base_url: {base_url}")
+    import time
+    import subprocess
     
     # 1. Queued -> Transcoding
     time.sleep(2)
@@ -60,19 +59,91 @@ def transcode_worker(video_id: str, input_path: str, base_url: str):
     # 2. Transcoding -> Uploading (with mock metadata updates)
     time.sleep(3)
     db.update_video_metadata(DB_PATH, video_id, 120.0, "/placeholder-thumbnail.jpg")
-    db.update_video_status(DB_PATH, video_id, "uploading", "Uploading HLS segments to delivery store...")
+    db.update_video_status(DB_PATH, video_id, "uploading", "Uploading segments to delivery store...")
     
-    # 3. Uploading -> Completed (mock delivery URLs)
-    time.sleep(3)
-    delivery_url = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" 
-    db.update_video_delivery(DB_PATH, video_id, delivery_url)
-    db.update_video_renditions(DB_PATH, video_id, [
-        {"resolution": "1080p", "width": 1920, "height": 1080, "bitrate": 4500000},
-        {"resolution": "720p", "width": 1280, "height": 720, "bitrate": 2200000},
-        {"resolution": "360p", "width": 640, "height": 360, "bitrate": 800000}
-    ])
-    db.update_video_status(DB_PATH, video_id, "completed")
-    logger.info(f"Mock transcoding completed successfully for {video_id}")
+    # 3. Transcode the uploaded video to HLS using local ffmpeg directly (no SDK dependency)
+    out_dir = STORAGE_DIR / "videos" / video_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    success = False
+    try:
+        # Check if the input video has audio using ffprobe
+        has_audio = False
+        try:
+            probe_cmd = [
+                "ffprobe", "-v", "error", "-select_streams", "a",
+                "-show_entries", "stream=codec_type", "-of", "csv=p=0", input_path
+            ]
+            probe_res = subprocess.check_output(probe_cmd, text=True)
+            if "audio" in probe_res:
+                has_audio = True
+        except Exception as probe_err:
+            logger.warning(f"Failed to probe audio stream using ffprobe: {probe_err}. Assuming no audio.")
+
+        # Construct the ABR multi-resolution HLS command (1080p, 720p, 360p)
+        ffmpeg_cmd = [
+            "ffmpeg", "-y", "-i", input_path,
+            "-filter_complex", "[0:v]split=3[v1][v2][v3];[v1]scale=w=1920:h=1080:force_original_aspect_ratio=decrease[v1out];[v2]scale=w=1280:h=720:force_original_aspect_ratio=decrease[v2out];[v3]scale=w=640:h=360:force_original_aspect_ratio=decrease[v3out]",
+            "-preset", "ultrafast",
+            # Stream 0: 1080p
+            "-map", "[v1out]", "-c:v:0", "libx264", "-b:v:0", "4500k", "-maxrate:v:0", "4500k", "-bufsize:v:0", "9000k",
+            # Stream 1: 720p
+            "-map", "[v2out]", "-c:v:1", "libx264", "-b:v:1", "2200k", "-maxrate:v:1", "2200k", "-bufsize:v:1", "4400k",
+            # Stream 2: 360p
+            "-map", "[v3out]", "-c:v:2", "libx264", "-b:v:2", "800k", "-maxrate:v:2", "800k", "-bufsize:v:2", "1600k",
+        ]
+
+        if has_audio:
+            ffmpeg_cmd += [
+                "-map", "0:a", "-c:a:0", "aac", "-b:a:0", "128k", "-ac:a:0", "2",
+                "-map", "0:a", "-c:a:1", "aac", "-b:a:1", "128k", "-ac:a:1", "2",
+                "-map", "0:a", "-c:a:2", "aac", "-b:a:2", "128k", "-ac:a:2", "2",
+            ]
+            var_stream_map = "v:0,a:0 v:1,a:1 v:2,a:2"
+        else:
+            var_stream_map = "v:0 v:1 v:2"
+
+        ffmpeg_cmd += [
+            "-f", "hls",
+            "-hls_time", "4",
+            "-hls_playlist_type", "vod",
+            "-hls_flags", "independent_segments",
+            "-master_pl_name", "master.m3u8",
+            "-var_stream_map", var_stream_map,
+            "-hls_segment_filename", str(out_dir / "v%v_seg_%03d.ts"),
+            str(out_dir / "v%v.m3u8")
+        ]
+
+        logger.info(f"Running local ffmpeg HLS ABR transcode: {' '.join(ffmpeg_cmd)}")
+        subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        delivery_url = f"{base_url}/videos/{video_id}/master.m3u8"
+        success = True
+        logger.info(f"Successfully transcoded {input_path} to ABR HLS stream: {delivery_url}")
+    except Exception as e:
+        logger.warning(f"Local ABR HLS transcoding failed or ffmpeg not found ({e}). Falling back to direct video staging.")
+        # Fallback: copy original video directly and serve as flat file
+        try:
+            ext = Path(input_path).suffix or ".mp4"
+            dest_path = out_dir / f"stream{ext}"
+            shutil.copy(input_path, dest_path)
+            delivery_url = f"{base_url}/videos/{video_id}/stream{ext}"
+            success = True
+            logger.info(f"Successfully staged original video fallback to: {delivery_url}")
+        except Exception as stage_err:
+            logger.error(f"Failed to copy original video fallback: {stage_err}")
+            db.update_video_status(DB_PATH, video_id, "failed", f"Staging error: {stage_err}")
+            return
+
+    # 4. Completed
+    if success:
+        db.update_video_delivery(DB_PATH, video_id, delivery_url)
+        db.update_video_renditions(DB_PATH, video_id, [
+            {"resolution": "1080p", "width": 1920, "height": 1080, "bitrate": 4500000},
+            {"resolution": "720p", "width": 1280, "height": 720, "bitrate": 2200000},
+            {"resolution": "360p", "width": 640, "height": 360, "bitrate": 800000}
+        ])
+        db.update_video_status(DB_PATH, video_id, "completed")
+        logger.info(f"Staging task completed successfully for {video_id}")
 
 @app.post("/api/videos/process-local")
 def process_local_video(background_tasks: BackgroundTasks, request: Request):
@@ -119,6 +190,13 @@ async def upload_video(background_tasks: BackgroundTasks, request: Request, file
     """Accepts a video upload and spawns the transcoding process."""
     if not file.filename.lower().endswith((".mp4", ".mov", ".avi", ".mkv")):
         raise HTTPException(status_code=400, detail="Unsupported video format")
+
+    # Enforce 20MB maximum size limit
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    if file_size > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size exceeds the 20MB sandbox limit")
 
     video_id = str(uuid.uuid4())
     video_temp_dir = TEMP_DIR / video_id

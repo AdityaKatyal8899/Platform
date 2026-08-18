@@ -17,6 +17,7 @@ export default function DemoPage() {
   const [videoOpen, setVideoOpen] = useState(false)
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null)
   const [backendState, setBackendState] = useState<'checking' | 'active' | 'offline'>('checking')
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
   
   const fileInput = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -111,6 +112,7 @@ export default function DemoPage() {
     setProgress(5)
     setStage('Connecting to local pipeline backend...')
     setActiveVideoUrl(null)
+    setThumbnailUrl(null)
 
     // Decide which backend API to hit
     let url = `${NEXT_PUBLIC_URI}/api/videos/process-local`
@@ -122,6 +124,48 @@ export default function DemoPage() {
         setUploading(false)
         return 
       }
+
+      // Proactively check video duration and extract thumbnail frame
+      try {
+        const videoMeta = await new Promise<{ duration: number; thumbnail: string }>((resolve, reject) => {
+          const tempVideo = document.createElement('video')
+          tempVideo.preload = 'metadata'
+          tempVideo.src = URL.createObjectURL(file)
+          
+          tempVideo.onloadedmetadata = () => {
+            tempVideo.currentTime = 1 // seek to 1 second
+          }
+          tempVideo.onseeked = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = tempVideo.videoWidth
+              canvas.height = tempVideo.videoHeight
+              const ctx = canvas.getContext('2d')
+              ctx?.drawImage(tempVideo, 0, 0, canvas.width, canvas.height)
+              const thumbnail = canvas.toDataURL('image/jpeg')
+              resolve({ duration: tempVideo.duration, thumbnail })
+            } catch (err) {
+              resolve({ duration: tempVideo.duration, thumbnail: '' })
+            }
+          }
+          tempVideo.onerror = () => {
+            reject(new Error('Invalid video file format'))
+          }
+        })
+
+        if (videoMeta.duration > 120) {
+          setStage('Video exceeds 120s duration limit')
+          setUploading(false)
+          return
+        }
+
+        if (videoMeta.thumbnail) {
+          setThumbnailUrl(videoMeta.thumbnail)
+        }
+      } catch (err) {
+        console.warn('[CoWatch SDK] Browser duration/thumbnail probe failed, skipping client validation:', err)
+      }
+
       url = `${NEXT_PUBLIC_URI}/api/videos/upload`
       const formData = new FormData()
       formData.append('file', file)
@@ -278,6 +322,7 @@ export default function DemoPage() {
               role="button" 
               tabIndex={0} 
               onKeyDown={e => e.key === 'Enter' && fileInput.current?.click()}
+              style={{ position: 'relative', overflow: 'hidden' }}
             >
               <input 
                 id="file-input" 
@@ -287,19 +332,24 @@ export default function DemoPage() {
                 className="sr-only" 
                 onChange={e => startUpload(e.target.files?.[0])} 
               />
-              <div className="upload-icon"><Upload size={23} /></div>
-              <strong>{uploading ? 'Processing original video payload' : 'Drop a video file here'}</strong>
-              <span>{uploading ? 'CoWatch is preparing your stream...' : 'MP4 or MOV · max 20MB'}</span>
-              {!uploading && <div className="upload-cta"><Plus size={14} /> Choose file</div>}
+              {thumbnailUrl ? (
+                <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: '12px' }}>
+                  <img src={thumbnailUrl} alt="Thumbnail preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0, 0, 0, 0.55)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '20px', textAlign: 'center' }}>
+                    <div className="upload-icon" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', marginBottom: '12px' }}><Upload size={23} /></div>
+                    <strong style={{ color: '#fff', fontSize: '16px', fontWeight: 600, textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>{uploading ? 'Processing original video payload' : 'Drop a video file here'}</strong>
+                    <span style={{ color: '#e2e8f0', fontSize: '13px', marginTop: '4px', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>{uploading ? 'CoWatch is preparing your stream...' : 'MP4 or MOV · max 20MB'}</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="upload-icon"><Upload size={23} /></div>
+                  <strong>{uploading ? 'Processing original video payload' : 'Drop a video file here'}</strong>
+                  <span>{uploading ? 'CoWatch is preparing your stream...' : 'MP4 or MOV · max 20MB'}</span>
+                  {!uploading && <div className="upload-cta"><Plus size={14} /> Choose file</div>}
+                </>
+              )}
             </div>
-
-            <Button 
-              id="btn-process-local" 
-              className="sample-button" 
-              onClick={e => { e.stopPropagation(); startUpload() }}
-            >
-              <FileVideo data-icon="inline-end" /> Process Sample Video
-            </Button>
             
             <Button 
               id="btn-play" 

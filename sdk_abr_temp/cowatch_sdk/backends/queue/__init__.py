@@ -1,1 +1,0 @@
-"""Queue backend adapters."""

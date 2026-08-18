@@ -13,7 +13,7 @@ export default function HomePage() {
   const router = useRouter()
   
   const stats = useMemo(() => [
-    { value: '80%', label: 'lower infra costs' }, 
+    { value: 'Lower Infrastructure-Cost', label: 'Customer Owned Infrastructure' }, 
     { value: '< 30s', label: 'to first playable' }, 
     { value: '4K', label: 'multi-rendition output' }
   ], [])
@@ -54,12 +54,14 @@ export default function HomePage() {
       <ScrollReveal className="hero-stats container" style={{ marginBottom: '80px' }}>
         {stats.map(stat => (
           <div className="stat" key={stat.label}>
-            <strong>{stat.value}</strong>
+            <strong style={{ fontSize: stat.value.length > 8 ? '20px' : '25px', letterSpacing: stat.value.length > 8 ? 'normal' : '-.05em', lineHeight: stat.value.length > 8 ? '1.4' : '1' }}>
+              {stat.value}
+            </strong>
             <span>{stat.label}</span>
           </div>
         ))}
         <div className="stat-note">
-          <span className="status-dot green" /> No vendor lock-in. Ever.
+          <span className="status-dot green" /> Your Infrastructure, Your Cloud
         </div>
       </ScrollReveal>
 
@@ -78,7 +80,7 @@ export default function HomePage() {
 
           <div className="glass-panel" style={{ padding: '28px', borderRadius: '12px', borderLeft: '4px solid #28583f' }}>
             <strong style={{ display: 'block', fontSize: '11px', color: '#28583f', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)' }}>Core Benefit</strong>
-            <h3 style={{ fontSize: '18px', fontWeight: 750, marginTop: '10px', color: '#28583f', letterSpacing: '-0.03em' }}>Save 80% on Bandwidth Bills</h3>
+            <h3 style={{ fontSize: '18px', fontWeight: 750, marginTop: '10px', color: '#28583f', letterSpacing: '-0.03em' }}>Save huge expenses on Bandwidth Bills</h3>
             <p style={{ fontSize: '13px', color: 'var(--muted-foreground)', marginTop: '8px', lineHeight: 1.6 }}>
               Bypass high SaaS video hosting markup fees. Since the video streams directly from your own S3 buckets and Cloudflare CDN edges, you pay raw infrastructure costs only.
             </p>
@@ -88,7 +90,7 @@ export default function HomePage() {
             <strong style={{ display: 'block', fontSize: '11px', color: '#28583f', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)' }}>Core Benefit</strong>
             <h3 style={{ fontSize: '18px', fontWeight: 750, marginTop: '10px', color: '#28583f', letterSpacing: '-0.03em' }}>Zero Platform Vendor Lock-in</h3>
             <p style={{ fontSize: '13px', color: 'var(--muted-foreground)', marginTop: '8px', lineHeight: 1.6 }}>
-              Get the entire pipeline source code, obfuscation templates, and DB triggers. Your video infrastructure is permanently Yours—even if you cancel support.
+              Get the entire pipeline source code (Contract based), obfuscation templates, and DB triggers. Your video infrastructure is permanently Yours—even if you cancel support.
             </p>
           </div>
 
