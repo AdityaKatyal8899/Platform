@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import SectionIntro from '@/components/SectionIntro'
 import ScrollReveal from '@/components/ScrollReveal'
 
+
+const NEXT_PUBLIC_URI = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
 export default function DemoPage() {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -40,7 +43,7 @@ export default function DemoPage() {
         const id = setTimeout(() => controller.abort(), 3500)
         
         // Ping local or public backend address
-        const res = await fetch('http://localhost:8000/api/videos', { signal: controller.signal })
+        const res = await fetch(`${NEXT_PUBLIC_URI}/api/videos`, { signal: controller.signal })
         clearTimeout(id)
         
         if (res.ok && active) {
@@ -109,7 +112,7 @@ export default function DemoPage() {
     setActiveVideoUrl(null)
 
     // Decide which backend API to hit
-    let url = 'http://localhost:8000/api/videos/process-local'
+    let url = `${NEXT_PUBLIC_URI}/api/videos/process-local`
     let options: RequestInit = { method: 'POST' }
 
     if (file) {
@@ -118,7 +121,7 @@ export default function DemoPage() {
         setUploading(false)
         return 
       }
-      url = 'http://localhost:8000/api/videos/upload'
+      url = `${NEXT_PUBLIC_URI}/api/videos/upload`
       const formData = new FormData()
       formData.append('file', file)
       options = {
@@ -143,7 +146,7 @@ export default function DemoPage() {
       let mockProgress = 10
       pollingIntervalRef.current = window.setInterval(async () => {
         try {
-          const statusRes = await fetch(`http://localhost:8000/api/videos/${videoId}`)
+          const statusRes = await fetch(`${NEXT_PUBLIC_URI}/api/videos/${videoId}`)
           if (!statusRes.ok) return
           const statusData = await statusRes.json()
           
@@ -153,7 +156,7 @@ export default function DemoPage() {
           if (currentStatus === 'completed') {
             setProgress(100)
             setStage('Pipeline ready')
-            setActiveVideoUrl(manifestPath || `http://localhost:8000/videos/${videoId}/master.m3u8`)
+            setActiveVideoUrl(manifestPath || `${NEXT_PUBLIC_URI}/videos/${videoId}/master.m3u8`)
             if (pollingIntervalRef.current) {
               window.clearInterval(pollingIntervalRef.current)
               pollingIntervalRef.current = null
@@ -181,7 +184,7 @@ export default function DemoPage() {
 
             // Early-Play Activation: If progress is >= 30%, stream is playable immediately!
             if (mockProgress >= 30) {
-              setActiveVideoUrl(`http://localhost:8000/videos/${videoId}/master.m3u8`)
+              setActiveVideoUrl(`${NEXT_PUBLIC_URI}/videos/${videoId}/master.m3u8`)
             }
           }
         } catch (pollErr) {
