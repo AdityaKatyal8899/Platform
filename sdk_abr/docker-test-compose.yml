@@ -1,0 +1,47 @@
+# docker-test-compose.yml — LOCAL DEV / DEMO ONLY (not production).
+# Includes the FastAPI test_harness UI. The harness runs the pipeline INLINE,
+# so `docker compose -f docker-test-compose.yml up` needs NO Redis.
+#
+#   docker compose -f docker-test-compose.yml up
+#   open http://localhost:8000  (drag-drop UI + hls.js player)
+#
+# Async mode (Redis + Celery worker): add --profile celery
+#   docker compose -f docker-test-compose.yml --profile celery up
+#
+# Config lives in .env (loaded via env_file).
+
+services:
+  harness:
+    build:
+      context: .
+      dockerfile: test_harness/Dockerfile
+    command: uvicorn test_harness.backend:app --host 0.0.0.0 --port 8000
+    env_file: .env
+    environment:
+      QUEUE_BACKEND: inline   # harness processes locally; no broker needed
+    ports:
+      - "8000:8000"
+    volumes:
+      - sdk_storage:/app/storage
+
+  # --- Optional async path (enable with: --profile celery) ---
+  redis:
+    image: redis:7-alpine
+    profiles: ["celery"]
+    ports:
+      - "6379:6379"
+
+  worker:
+    build:
+      context: .
+      dockerfile: cowatch_sdk/container/Dockerfile
+    command: ["celery", "-A", "cowatch_sdk.backends.queue.celery_app", "worker", "--loglevel=info"]
+    env_file: .env
+    depends_on:
+      - redis
+    volumes:
+      - sdk_storage:/app/storage
+    profiles: ["celery"]
+
+volumes:
+  sdk_storage:

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cowatch-sdk"
+version = "0.1.0"
+description = "Self-hostable video processing pipeline SDK (receive -> transcode -> HLS -> store -> emit result signal)"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "boto3",        # only needed when STORAGE_BACKEND=s3
+    "celery",       # only needed when QUEUE_BACKEND=celery
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+cowatch-sdk = "cowatch_sdk.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["cowatch_sdk*"]
