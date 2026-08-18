@@ -1,4 +1,0 @@
-fastapi
-uvicorn
-python-multipart
-# (cowatch-sdk itself, with boto3/celery, is installed via: pip install -e ..)
