@@ -15,7 +15,7 @@ export default function HomePage() {
   
   const stats = useMemo(() => [
     { value: 'Lower Infrastructure-Cost', label: 'Customer Owned Infrastructure' }, 
-    { value: '< 30s', label: 'to first playable' }, 
+    { value: '< 1minute', label: 'to first playable' }, 
     { value: '4K', label: 'multi-rendition output' }
   ], [])
 
