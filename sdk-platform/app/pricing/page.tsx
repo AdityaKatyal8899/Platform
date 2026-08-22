@@ -285,7 +285,7 @@ export default function PricingPage() {
             </div>
             <div style={{ marginTop: '20px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
-                <strong style={{ fontSize: '42px', fontWeight: 850, color: '#28583f', letterSpacing: '-0.04em', lineHeight: 1 }}>$3,500</strong>
+                <strong style={{ fontSize: '42px', fontWeight: 850, color: '#28583f', letterSpacing: '-0.04em', lineHeight: 1 }}>$3,499</strong>
                 <span style={{ fontSize: '14px', color: '#65736a', fontWeight: 500 }}>for setup</span>
               </div>
               <div style={{ marginTop: '8px', fontSize: '13px', color: '#8e3f46', fontWeight: 650 }}>
