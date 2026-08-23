@@ -279,7 +279,7 @@ Best regards,`
           </p>
           <Button
             className="button-secondary"
-            onClick={() => window.open('https://calendly.com/cowatch-integrations/10min', '_blank')}
+            onClick={() => window.open('https://cal.com/aditya-katyal-8xnwyi/setup-interest-chat', '_blank')}
             style={{ width: '100%', justifyContent: 'center' }}
           >
             Schedule 10min Chat <ArrowRight data-icon="inline-end" />
